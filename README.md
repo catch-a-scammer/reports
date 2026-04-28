@@ -50,6 +50,12 @@ When a new threat is identified, reports are filed with:
 
 ---
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on submitting reports, safe analysis workflows, and common attack vectors to check.
+
+---
+
 ## Disclaimer
 
 All analysis is performed through static code review only — no malicious code is executed. Malware samples and source code are preserved for documentation purposes. Use this information responsibly and only for defensive purposes.
