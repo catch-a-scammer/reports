@@ -1,0 +1,12 @@
+type,value,context,first_seen,status
+domain,nnlabs.pro,C2 / payload delivery server,2026-04-28,active
+domain,myblockstar.com,Fake company website referenced in README,2026-04-28,active
+ipv4,88.223.87.242,nnlabs.pro A record,2026-04-28,active
+ipv4,147.79.72.166,nnlabs.pro A record,2026-04-28,active
+ipv6,2a02:4780:4d:ebca:de6b:fbe1:272b:4dd6,nnlabs.pro AAAA record,2026-04-28,active
+ipv6,2a02:4780:4a:e4a3:cc4a:6e25:47c6:3d91,nnlabs.pro AAAA record,2026-04-28,active
+url,https://nnlabs.pro/settings/mac?flag=2,macOS payload endpoint,2026-04-28,active
+url,https://nnlabs.pro/settings/linux?flag=2,Linux payload endpoint,2026-04-28,active
+url,https://nnlabs.pro/settings/windows?flag=2,Windows payload endpoint,2026-04-28,active
+github_org,blockstar-ai,Attacker GitHub organization,2026-04-28,active
+github_repo,blockstar-ai/blockstar-hiring,Malware distribution repository,2026-04-28,active
